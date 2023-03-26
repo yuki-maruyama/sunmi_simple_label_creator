@@ -1,0 +1,61 @@
+# build project and release when tagged
+name: Build and Release when tagged
+
+on:
+  push:
+    branches-ignore:
+      - '**'
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v1
+        with:
+          channel: 'stable'
+      - name: Get version
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        id: meta
+        with:
+          # Only use tags that match the specified regex pattern
+          # Default: .*
+          tag_regex: '^v\d+\.\d+\.\d+$'
+      - name: Build release
+        run: flutter build apk --release --split-per-abi --version-name ${{ steps.meta.outputs.tag }}
+      - name: Upload release
+        uses: actions/upload-artifact@v2
+        with:
+          name: release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./app-release.apk
+          asset_name: sunmi-simple-label-creator-${{ steps.meta.outputs.tag }}.apk
+          asset_content_type: application/vnd.android.package-archive
