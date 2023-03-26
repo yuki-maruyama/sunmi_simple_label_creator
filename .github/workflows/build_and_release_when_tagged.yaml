@@ -24,7 +24,7 @@ jobs:
           # Default: .*
           tag_regex: '^v\d+\.\d+\.\d+$'
       - name: Build release
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release
       - name: Upload release
         uses: actions/upload-artifact@v2
         with:
